@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bike Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f1efe8;
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #888780;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --blue: #378ADD;
+    --blue-l: #85B7EB;
+    --green: #1D9E75;
+    --green-l: #9FE1CB;
+    --gray: #B4B2A9;
+    --red-bg: #FCEBEB;
+    --red-text: #A32D2D;
+    --green-bg: #EAF3DE;
+    --green-text: #3B6D11;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --surface: #252523;
+      --surface2: #2c2c2a;
+      --text: #f0ede6;
+      --text2: #b4b2a9;
+      --text3: #888780;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+      --blue: #5ba3e8;
+      --blue-l: #3a7bbf;
+      --green: #27c48f;
+      --green-l: #1a7a5a;
+      --gray: #5f5e5a;
+      --red-bg: #3a1a1a;
+      --red-text: #f09595;
+      --green-bg: #1a2e0f;
+      --green-text: #97C459;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  header { margin-bottom: 1.75rem; }
+  header h1 { font-size: 20px; font-weight: 500; color: var(--text); }
+  header p { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface2); border-radius: var(--radius-md); padding: 14px 16px; }
+  .kpi-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .kpi-value { font-size: 22px; font-weight: 500; color: var(--text); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .chart-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .chart-sub { font-size: 11px; color: var(--text2); margin-bottom: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: var(--text2); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .canvas-wrap { position: relative; width: 100%; height: 220px; }
+  .table-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .table-header { margin-bottom: 12px; }
+  .table-header h2 { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .table-header p { font-size: 11px; color: var(--text2); }
+  .table-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .table-controls input, .table-controls select {
+    font-family: inherit; font-size: 13px; color: var(--text);
+    background: var(--surface); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-md); padding: 6px 10px; outline: none;
+  }
+  .table-controls input { flex: 1; min-width: 160px; max-width: 260px; }
+  .table-controls input:focus, .table-controls select:focus { border-color: var(--blue); }
+  .tbl-count { font-size: 12px; color: var(--text3); margin-left: auto; }
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text2); padding: 6px 8px; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 0.5px solid var(--border); color: var(--text); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .badge-yes { background: var(--green-bg); color: var(--green-text); }
+  .badge-no { background: var(--red-bg); color: var(--red-text); }
+  .pager { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--text2); }
+  .pager button {
+    font-family: inherit; font-size: 12px; color: var(--text);
+    background: var(--surface); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-md); padding: 4px 12px; cursor: pointer;
+  }
+  .pager button:hover { background: var(--surface2); }
+  .pager button:disabled { opacity: 0.4; cursor: default; }
+  footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2rem; padding-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Bike Sales Dashboard</h1>
+    <p>1,026 customer records — purchase patterns across demographics, region, income, and commute</p>
+  </header>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total customers</div><div class="kpi-value">1,026</div><div class="kpi-sub">survey records</div></div>
+    <div class="kpi"><div class="kpi-label">Bikes purchased</div><div class="kpi-value">495</div><div class="kpi-sub">48.2% conversion</div></div>
+    <div class="kpi"><div class="kpi-label">Avg income</div><div class="kpi-value">$56,209</div><div class="kpi-sub">range $10k – $170k</div></div>
+    <div class="kpi"><div class="kpi-label">Avg age</div><div class="kpi-value">44.1 yrs</div><div class="kpi-sub">range 25 – 89</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Purchase rate by age group</div>
+      <div class="chart-sub">buyers vs non-buyers per cohort</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#378ADD"></span>Purchased</span>
+        <span><span class="legend-dot" style="background:#B4B2A9"></span>Did not purchase</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="c-age" role="img" aria-label="Grouped bar chart of bike purchases by age group. 35-44 has highest purchase rate.">25-34: 96 yes, 129 no. 35-44: 203 yes, 138 no. 45-54: 135 yes, 130 no. 55-64: 44 yes, 92 no. 65+: 17 yes, 42 no.</canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Purchase rate by occupation</div>
+      <div class="chart-sub">buyers vs non-buyers per job category</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#1D9E75"></span>Purchased</span>
+        <span><span class="legend-dot" style="background:#B4B2A9"></span>Did not purchase</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="c-occ" role="img" aria-label="Grouped bar chart of bike purchases by occupation.">Clerical: 95/92. Management: 73/101. Manual: 59/67. Professional: 150/130. Skilled Manual: 118/141.</canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Commute distance &amp; purchase</div>
+      <div class="chart-sub">shorter commutes correlate with buying</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#378ADD"></span>Purchased</span>
+        <span><span class="legend-dot" style="background:#B4B2A9"></span>Did not purchase</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="c-commute" role="img" aria-label="Bar chart of bike purchase rates by commute distance.">0-1 mi: 207/171. 1-2 mi: 83/93. 2-5 mi: 95/67. 5-10 mi: 77/120. 10+ mi: 33/80.</canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Income bracket breakdown</div>
+      <div class="chart-sub">purchase split across income ranges</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#1D9E75"></span>Purchased</span>
+        <span><span class="legend-dot" style="background:#B4B2A9"></span>Did not purchase</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="c-income" role="img" aria-label="Grouped bar chart of bike purchases by income bracket.">&lt;30k: 63/91. 30-60k: 171/168. 60-90k: 184/201. 90-120k: 44/42. 120k+: 33/29.</canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Purchase by region</div>
+      <div class="chart-sub">buyers vs non-buyers across 3 regions</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#378ADD"></span>Purchased</span>
+        <span><span class="legend-dot" style="background:#B4B2A9"></span>Did not purchase</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="c-region" role="img" aria-label="Grouped bar chart of bike purchases by region.">Europe: 156/160. North America: 220/288. Pacific: 119/83.</canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Gender purchase split</div>
+      <div class="chart-sub">purchase outcomes broken out by gender</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#378ADD"></span>Male – purchased</span>
+        <span><span class="legend-dot" style="background:#85B7EB"></span>Male – not purchased</span>
+        <span><span class="legend-dot" style="background:#1D9E75"></span>Female – purchased</span>
+        <span><span class="legend-dot" style="background:#9FE1CB"></span>Female – not purchased</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="c-gender" role="img" aria-label="Donut chart showing purchase outcomes by gender.">Male purchased: 252. Male no: 273. Female purchased: 243. Female no: 258.</canvas></div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <h2>Customer records</h2>
+      <p>50 sample records — search or filter by purchase status</p>
+    </div>
+    <div class="table-controls">
+      <input type="text" id="tbl-search" placeholder="Search by ID, region, occupation…" oninput="filterTable()" />
+      <select id="tbl-filter" onchange="filterTable()">
+        <option value="">All purchases</option>
+        <option value="Yes">Purchased</option>
+        <option value="No">Not purchased</option>
+      </select>
+      <span class="tbl-count" id="tbl-count"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Gender</th><th>Age</th><th>Occupation</th>
+            <th>Income</th><th>Education</th><th>Region</th>
+            <th>Commute</th><th>Cars</th><th>Purchased</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button id="btn-prev" onclick="prevPage()">← prev</button>
+      <span id="page-info"></span>
+      <button id="btn-next" onclick="nextPage()">next →</button>
+    </div>
+  </div>
+
+  <footer>Bike Sales Dashboard &mdash; generated from 1,026 survey records</footer>
+</div>
+
+<script>
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const BLUE = '#378ADD', BLUE_L = '#85B7EB', GREEN = '#1D9E75', GREEN_L = '#9FE1CB', GRAY = isDark ? '#5f5e5a' : '#B4B2A9';
+
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888780', autoSkip: false } },
+    y: { grid: { color: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)' }, ticks: { font: { size: 11 }, color: '#888780' }, beginAtZero: true }
+  }
+};
+
+new Chart(document.getElementById('c-age'), {
+  type: 'bar',
+  data: {
+    labels: ['25–34','35–44','45–54','55–64','65+'],
+    datasets: [
+      { label: 'Purchased', data: [96,203,135,44,17], backgroundColor: BLUE },
+      { label: 'Did not purchase', data: [129,138,130,92,42], backgroundColor: GRAY }
+    ]
+  },
+  options: { ...chartDefaults }
+});
+
+new Chart(document.getElementById('c-occ'), {
+  type: 'bar',
+  data: {
+    labels: ['Clerical','Management','Manual','Professional','Skilled Manual'],
+    datasets: [
+      { label: 'Purchased', data: [95,73,59,150,118], backgroundColor: GREEN },
+      { label: 'Did not purchase', data: [92,101,67,130,141], backgroundColor: GRAY }
+    ]
+  },
+  options: { ...chartDefaults, scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, ticks: { font: { size: 10 }, color: '#888780', autoSkip: false } } } }
+});
+
+new Chart(document.getElementById('c-commute'), {
+  type: 'bar',
+  data: {
+    labels: ['0–1 mi','1–2 mi','2–5 mi','5–10 mi','10+ mi'],
+    datasets: [
+      { label: 'Purchased', data: [207,83,95,77,33], backgroundColor: BLUE },
+      { label: 'Did not purchase', data: [171,93,67,120,80], backgroundColor: GRAY }
+    ]
+  },
+  options: { ...chartDefaults }
+});
+
+new Chart(document.getElementById('c-income'), {
+  type: 'bar',
+  data: {
+    labels: ['<$30k','$30–60k','$60–90k','$90–120k','>$120k'],
+    datasets: [
+      { label: 'Purchased', data: [63,171,184,44,33], backgroundColor: GREEN },
+      { label: 'Did not purchase', data: [91,168,201,42,29], backgroundColor: GRAY }
+    ]
+  },
+  options: { ...chartDefaults, scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, ticks: { font: { size: 10 }, color: '#888780', autoSkip: false } } } }
+});
+
+new Chart(document.getElementById('c-region'), {
+  type: 'bar',
+  data: {
+    labels: ['Europe','N. America','Pacific'],
+    datasets: [
+      { label: 'Purchased', data: [156,220,119], backgroundColor: BLUE },
+      { label: 'Did not purchase', data: [160,288,83], backgroundColor: GRAY }
+    ]
+  },
+  options: { ...chartDefaults }
+});
+
+new Chart(document.getElementById('c-gender'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Male – purchased','Male – not purchased','Female – purchased','Female – not purchased'],
+    datasets: [{
+      data: [252, 273, 243, 258],
+      backgroundColor: [BLUE, BLUE_L, GREEN, GREEN_L],
+      borderWidth: 2,
+      borderColor: isDark ? '#252523' : '#ffffff'
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '60%',
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } } }
+  }
+});
+
+const tableData = [{"id":"12496","gender":"Female","age":"42","occupation":"Skilled Manual","income":"$40,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"24107","gender":"Male","age":"43","occupation":"Clerical","income":"$30,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"1","purchased":"No"},{"id":"14177","gender":"Male","age":"60","occupation":"Professional","income":"$80,000.00","education":"Partial College","region":"Europe","commute":"2-5 Miles","cars":"2","purchased":"No"},{"id":"24381","gender":"Male","age":"41","occupation":"Professional","income":"$70,000.00","education":"Bachelors","region":"Pacific","commute":"5-10 Miles","cars":"1","purchased":"Yes"},{"id":"25597","gender":"Male","age":"36","occupation":"Clerical","income":"$30,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"Yes"},{"id":"13507","gender":"Female","age":"50","occupation":"Manual","income":"$10,000.00","education":"Partial College","region":"Europe","commute":"1-2 Miles","cars":"0","purchased":"No"},{"id":"27974","gender":"Male","age":"33","occupation":"Management","income":"$160,000.00","education":"High School","region":"Pacific","commute":"0-1 Miles","cars":"4","purchased":"Yes"},{"id":"19364","gender":"Male","age":"43","occupation":"Skilled Manual","income":"$40,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"Yes"},{"id":"22155","gender":"Male","age":"58","occupation":"Clerical","income":"$20,000.00","education":"Partial High School","region":"Pacific","commute":"5-10 Miles","cars":"2","purchased":"No"},{"id":"19280","gender":"Male","age":"40","occupation":"Manual","income":"$120,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"1","purchased":"Yes"},{"id":"22173","gender":"Female","age":"54","occupation":"Skilled Manual","income":"$30,000.00","education":"High School","region":"Pacific","commute":"1-2 Miles","cars":"2","purchased":"Yes"},{"id":"12697","gender":"Female","age":"36","occupation":"Professional","income":"$90,000.00","education":"Bachelors","region":"Pacific","commute":"10+ Miles","cars":"4","purchased":"No"},{"id":"11434","gender":"Male","age":"55","occupation":"Professional","income":"$170,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"25323","gender":"Male","age":"35","occupation":"Clerical","income":"$40,000.00","education":"Partial College","region":"Europe","commute":"1-2 Miles","cars":"1","purchased":"Yes"},{"id":"23542","gender":"Male","age":"45","occupation":"Skilled Manual","income":"$60,000.00","education":"Partial College","region":"Pacific","commute":"0-1 Miles","cars":"1","purchased":"Yes"},{"id":"20870","gender":"Female","age":"38","occupation":"Manual","income":"$10,000.00","education":"High School","region":"Europe","commute":"0-1 Miles","cars":"1","purchased":"Yes"},{"id":"23316","gender":"Male","age":"59","occupation":"Clerical","income":"$30,000.00","education":"Partial College","region":"Pacific","commute":"1-2 Miles","cars":"2","purchased":"Yes"},{"id":"12610","gender":"Female","age":"47","occupation":"Clerical","income":"$30,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"27183","gender":"Male","age":"35","occupation":"Clerical","income":"$40,000.00","education":"Partial College","region":"Europe","commute":"1-2 Miles","cars":"1","purchased":"Yes"},{"id":"25940","gender":"Male","age":"55","occupation":"Clerical","income":"$20,000.00","education":"Partial High School","region":"Pacific","commute":"5-10 Miles","cars":"2","purchased":"Yes"},{"id":"25598","gender":"Female","age":"36","occupation":"Clerical","income":"$40,000.00","education":"Graduate Degree","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"Yes"},{"id":"21564","gender":"Female","age":"35","occupation":"Professional","income":"$80,000.00","education":"Bachelors","region":"Pacific","commute":"10+ Miles","cars":"4","purchased":"No"},{"id":"19193","gender":"Male","age":"35","occupation":"Clerical","income":"$40,000.00","education":"Partial College","region":"Europe","commute":"1-2 Miles","cars":"0","purchased":"Yes"},{"id":"26412","gender":"Female","age":"56","occupation":"Management","income":"$80,000.00","education":"High School","region":"Europe","commute":"5-10 Miles","cars":"3","purchased":"No"},{"id":"27184","gender":"Male","age":"34","occupation":"Clerical","income":"$40,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"1","purchased":"No"},{"id":"12590","gender":"Male","age":"63","occupation":"Clerical","income":"$30,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"17841","gender":"Male","age":"29","occupation":"Clerical","income":"$30,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"1","purchased":"Yes"},{"id":"18283","gender":"Female","age":"40","occupation":"Professional","income":"$100,000.00","education":"Bachelors","region":"Pacific","commute":"5-10 Miles","cars":"1","purchased":"No"},{"id":"18299","gender":"Male","age":"44","occupation":"Skilled Manual","income":"$70,000.00","education":"Partial College","region":"Pacific","commute":"5-10 Miles","cars":"2","purchased":"No"},{"id":"16466","gender":"Female","age":"32","occupation":"Manual","income":"$20,000.00","education":"Partial High School","region":"Europe","commute":"0-1 Miles","cars":"2","purchased":"Yes"},{"id":"19273","gender":"Female","age":"63","occupation":"Manual","income":"$20,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"22400","gender":"Male","age":"26","occupation":"Manual","income":"$10,000.00","education":"Partial College","region":"Pacific","commute":"0-1 Miles","cars":"1","purchased":"Yes"},{"id":"20942","gender":"Female","age":"31","occupation":"Manual","income":"$20,000.00","education":"High School","region":"Europe","commute":"5-10 Miles","cars":"1","purchased":"No"},{"id":"18484","gender":"Male","age":"50","occupation":"Skilled Manual","income":"$80,000.00","education":"High School","region":"Pacific","commute":"1-2 Miles","cars":"2","purchased":"Yes"},{"id":"12291","gender":"Male","age":"62","occupation":"Professional","income":"$90,000.00","education":"Partial College","region":"Europe","commute":"2-5 Miles","cars":"2","purchased":"Yes"},{"id":"28380","gender":"Female","age":"41","occupation":"Manual","income":"$10,000.00","education":"Partial High School","region":"Europe","commute":"0-1 Miles","cars":"2","purchased":"No"},{"id":"17891","gender":"Female","age":"50","occupation":"Manual","income":"$10,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"1","purchased":"Yes"},{"id":"27832","gender":"Female","age":"30","occupation":"Clerical","income":"$30,000.00","education":"Partial College","region":"Europe","commute":"2-5 Miles","cars":"1","purchased":"No"},{"id":"26863","gender":"Male","age":"28","occupation":"Manual","income":"$20,000.00","education":"High School","region":"Europe","commute":"2-5 Miles","cars":"1","purchased":"No"},{"id":"16259","gender":"Female","age":"40","occupation":"Manual","income":"$10,000.00","education":"Partial High School","region":"Europe","commute":"0-1 Miles","cars":"2","purchased":"Yes"},{"id":"27803","gender":"Female","age":"43","occupation":"Clerical","income":"$30,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"14347","gender":"Female","age":"65","occupation":"Management","income":"$40,000.00","education":"Bachelors","region":"Pacific","commute":"5-10 Miles","cars":"2","purchased":"Yes"},{"id":"17703","gender":"Female","age":"40","occupation":"Manual","income":"$10,000.00","education":"Graduate Degree","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"No"},{"id":"17185","gender":"Female","age":"48","occupation":"Professional","income":"$170,000.00","education":"Partial College","region":"Europe","commute":"5-10 Miles","cars":"3","purchased":"Yes"},{"id":"29380","gender":"Female","age":"41","occupation":"Manual","income":"$20,000.00","education":"High School","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"Yes"},{"id":"23986","gender":"Female","age":"66","occupation":"Clerical","income":"$20,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"Yes"},{"id":"24466","gender":"Female","age":"46","occupation":"Skilled Manual","income":"$60,000.00","education":"Partial College","region":"Pacific","commute":"5-10 Miles","cars":"1","purchased":"Yes"},{"id":"29097","gender":"Female","age":"52","occupation":"Skilled Manual","income":"$40,000.00","education":"Partial College","region":"Pacific","commute":"5-10 Miles","cars":"2","purchased":"Yes"},{"id":"19487","gender":"Male","age":"42","occupation":"Clerical","income":"$30,000.00","education":"Partial College","region":"Europe","commute":"0-1 Miles","cars":"2","purchased":"No"},{"id":"14939","gender":"Male","age":"39","occupation":"Clerical","income":"$40,000.00","education":"Bachelors","region":"Europe","commute":"0-1 Miles","cars":"0","purchased":"Yes"}];
+
+const PAGE_SIZE = 12;
+let filtered = [...tableData], page = 0;
+
+function filterTable() {
+  const q = document.getElementById('tbl-search').value.toLowerCase();
+  const f = document.getElementById('tbl-filter').value;
+  filtered = tableData.filter(r => {
+    const text = Object.values(r).join(' ').toLowerCase();
+    return text.includes(q) && (!f || r.purchased === f);
+  });
+  page = 0;
+  renderTable();
+}
+
+function renderTable() {
+  const start = page * PAGE_SIZE, end = start + PAGE_SIZE;
+  const slice = filtered.slice(start, end);
+  document.getElementById('tbl-body').innerHTML = slice.map(r => `<tr>
+    <td>${r.id}</td><td>${r.gender}</td><td>${r.age}</td><td>${r.occupation}</td>
+    <td>${r.income}</td><td>${r.education}</td><td>${r.region}</td>
+    <td>${r.commute}</td><td>${r.cars}</td>
+    <td><span class="badge ${r.purchased === 'Yes' ? 'badge-yes' : 'badge-no'}">${r.purchased}</span></td>
+  </tr>`).join('');
+  const total = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  document.getElementById('tbl-count').textContent = `${filtered.length} records`;
+  document.getElementById('page-info').textContent = `Page ${page + 1} of ${total}`;
+  document.getElementById('btn-prev').disabled = page === 0;
+  document.getElementById('btn-next').disabled = (page + 1) >= total;
+}
+
+function prevPage() { if (page > 0) { page--; renderTable(); } }
+function nextPage() { if ((page + 1) * PAGE_SIZE < filtered.length) { page++; renderTable(); } }
+
+renderTable();
+</script>
+</body>
+</html>
